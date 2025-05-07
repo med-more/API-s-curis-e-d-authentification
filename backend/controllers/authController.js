@@ -14,3 +14,20 @@ exports.register = async (req, res, next) => {
       next(err);
     }
   };
+
+  exports.login = async (req, res, next) => {
+    try {
+      const { email, password } = req.body;
+      const user = await User.findOne({ email });
+      if (!user || !(await bcrypt.compare(password, user.password))) {
+        return res.status(401).json({ error: 'Identifiants invalides' });
+      }
+  
+      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      req.session.user = user._id;
+  
+      res.json({ token, message: 'Connexion réussie' });
+    } catch (err) {
+      next(err);
+    }
+  };

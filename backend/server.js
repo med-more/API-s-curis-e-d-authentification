@@ -3,6 +3,7 @@ const dotenv = require("dotenv");
 const connectDb = require("./config/db");
 const cors = require("cors");
 const authRoutes = require("./routes/authRoutes");
+const errorHandler = require("./middlewares/errorHandler");
 
 dotenv.config();
 connectDb();
@@ -11,6 +12,8 @@ const app = express();
 app.use(cors()); 
 app.use(express.json()); 
 app.use('/api/auth', authRoutes);
+app.use(errorHandler);
+
 
 app.use(cors({
     origin: 'http://localhost:5173',

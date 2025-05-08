@@ -32,6 +32,13 @@ exports.register = async (req, res, next) => {
     }
   };
 
+  exports.logout = (req, res) => {
+    req.session.destroy(() => {
+      res.clearCookie('connect.sid');
+      res.json({ message: 'Déconnexion réussie' });
+    });
+  };
+
   exports.getMe = async (req, res, next) => {
     try {
       const user = await User.findById(req.userId || req.session?.user);

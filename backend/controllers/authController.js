@@ -31,3 +31,13 @@ exports.register = async (req, res, next) => {
       next(err);
     }
   };
+
+  exports.getMe = async (req, res, next) => {
+    try {
+      const user = await User.findById(req.userId || req.session?.user);
+      if (!user) return res.status(404).json({ error: 'Utilisateur non trouvé' });
+      res.json({ name: user.name, email: user.email });
+    } catch (err) {
+      next(err);
+    }
+  };

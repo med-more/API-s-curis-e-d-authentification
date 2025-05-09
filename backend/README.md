@@ -63,8 +63,8 @@ CORS_ORIGIN=http://localhost:3000
 
 
 ## 🧰 Scripts
-npm start        # Start server
-npm run dev      # Start with nodemon
+node server.js        # Start server
+nodemon server.js      # Start with nodemon
 
 ##📘 UML Diagrams
 

@@ -1,3 +1,5 @@
+"use client"
+
 import { Link } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { Shield, User, ArrowRight, LogIn, UserPlus, Users, Layers } from "lucide-react"
@@ -9,7 +11,7 @@ const Home = () => {
     <div className="max-w-4xl mx-auto">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent">
-          Welcome to Auth App
+          Welcome to Auth Demo
         </h1>
         <p className="text-xl text-gray-600 max-w-2xl mx-auto">
           A demonstration of role-based authentication with React, Vite, and Tailwind CSS

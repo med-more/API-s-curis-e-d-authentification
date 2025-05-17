@@ -1,5 +1,7 @@
+"use client"
+
 import { useAuth } from "../context/AuthContext"
-import { User, Mail, Calendar, Settings, Bell, FileText, Shield } from "lucide-react"
+import { User, Mail, Calendar, Settings, Bell, FileText, Shield, Activity } from "lucide-react"
 
 const UserDashboard = () => {
   const { user } = useAuth()
@@ -77,6 +79,26 @@ const UserDashboard = () => {
           </div>
           <h3 className="text-xl font-semibold mb-1">3</h3>
           <p className="text-gray-500">Settings</p>
+        </div>
+      </div>
+
+      <div className="card p-6">
+        <h2 className="text-xl font-semibold mb-4 flex items-center">
+          <Activity className="h-5 w-5 mr-2 text-primary-600" />
+          Recent Activity
+        </h2>
+        <div className="space-y-4">
+          {[1, 2, 3].map((item) => (
+            <div key={item} className="flex items-start p-3 rounded-lg hover:bg-gray-50 transition-colors">
+              <div className="bg-primary-100 p-2 rounded-full mr-3">
+                <Activity className="h-5 w-5 text-primary-600" />
+              </div>
+              <div>
+                <p className="font-medium">You logged in from a new device</p>
+                <p className="text-sm text-gray-500">{new Date().toLocaleDateString()}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

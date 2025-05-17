@@ -1,13 +1,24 @@
 const jwt = require('jsonwebtoken');
-module.exports = (req, res, next) => {
+const User = require('../models/User');
+
+module.exports = async (req, res, next) => {
   const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Token requis' });
+  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ message: 'Token requis' });
 
   try {
-    const decoded = jwt.verify(auth.split(' ')[1], process.env.JWT_SECRET);
+    const token = auth.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
     req.userId = decoded.id;
+    req.user = decoded;
+    
+    const userExists = await User.exists({ _id: decoded.id });
+    if (!userExists) {
+      return res.status(401).json({ message: 'Utilisateur non trouvé' });
+    }
+    
     next();
-  } catch {
-    res.status(401).json({ error: 'Token invalide ou expiré' });
+  } catch (error) {
+    res.status(401).json({ message: 'Token invalide ou expiré' });
   }
 };

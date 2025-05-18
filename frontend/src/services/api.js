@@ -69,14 +69,16 @@ export const authApi = {
   verifyEmail: (token) => api.get(`/auth/verify-email/${token}`),
   resendVerification: (email) => api.post("/auth/resend-verification", { email }),
   verifyPhone: (code, phone) => api.post("/auth/verify-phone", { code, phone }),
-  updateProfile: (userData) => api.put("/users/profile", userData),
+  updateProfile: (userData) => api.put("/auth/profile", userData),
 }
 
 // User API endpoints
 export const userApi = {
-  getAll: (page = 1, limit = 10) => api.get(`/users?page=${page}&limit=${limit}`),
-  getById: (id) => api.get(`/users/${id}`),
-  search: (query) => api.get(`/users/search?q=${query}`),
+  getAllUsers: (page = 1, limit = 10) => api.get(`/users?page=${page}&limit=${limit}`),
+  searchUsers: (query) => api.get(`/users/search?q=${query}`),
+  getUserById: (id) => api.get(`/users/${id}`),
+  updateUser: (id, userData) => api.put(`/users/${id}`, userData),
+  deleteUser: (id) => api.delete(`/users/${id}`),
   getActivityLogs: () => api.get("/users/activity-logs"),
 }
 

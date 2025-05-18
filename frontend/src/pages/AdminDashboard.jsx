@@ -22,7 +22,10 @@ import {
   ChevronRight,
   RefreshCw,
   Phone,
+  X,
 } from "lucide-react"
+import { userApi } from "../services/api"
+import toast from "react-hot-toast"
 
 const AdminDashboard = () => {
   const { user } = useAuth()
@@ -38,165 +41,173 @@ const AdminDashboard = () => {
     serverLoad: 0,
     databaseSize: 0,
   })
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: ""
+  })
 
   // Fetch users data
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true)
-        // In a real app, these would be real API calls
-        // For demo purposes, we'll create mock data
-
-        // Mock users data
-        const mockUsers = [
-          {
-            id: "u1",
-            name: "Jean Dupont",
-            email: "jean@example.com",
-            phone: "+33612345678",
-            role: "user",
-            emailVerified: true,
-            phoneVerified: true,
-            createdAt: new Date(2023, 0, 15).toISOString(),
-            updatedAt: new Date(2023, 2, 20).toISOString(),
-          },
-          {
-            id: "u2",
-            name: "Marie Martin",
-            email: "marie@example.com",
-            phone: "+33687654321",
-            role: "user",
-            emailVerified: true,
-            phoneVerified: false,
-            createdAt: new Date(2023, 1, 5).toISOString(),
-            updatedAt: new Date(2023, 1, 5).toISOString(),
-          },
-          {
-            id: "u3",
-            name: "Lucas Bernard",
-            email: "lucas@example.com",
-            phone: "+33678901234",
-            role: "admin",
-            emailVerified: true,
-            phoneVerified: true,
-            createdAt: new Date(2022, 11, 10).toISOString(),
-            updatedAt: new Date(2023, 3, 15).toISOString(),
-          },
-          {
-            id: "u4",
-            name: "Sophie Petit",
-            email: "sophie@example.com",
-            phone: "+33699887766",
-            role: "user",
-            emailVerified: false,
-            phoneVerified: false,
-            createdAt: new Date(2023, 2, 25).toISOString(),
-            updatedAt: new Date(2023, 2, 25).toISOString(),
-          },
-          {
-            id: "u5",
-            name: "Pierre Durand",
-            email: "pierre@example.com",
-            phone: "+33655443322",
-            role: "user",
-            emailVerified: true,
-            phoneVerified: true,
-            createdAt: new Date(2023, 3, 5).toISOString(),
-            updatedAt: new Date(2023, 3, 5).toISOString(),
-          },
-        ]
-
+        const response = await userApi.getAllUsers(page, 10)
+        const { users, total } = response.data
+        
         // Filter by search term if provided
         const filteredUsers = searchTerm
-          ? mockUsers.filter(
+          ? users.filter(
               (user) =>
                 user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                user.phone.includes(searchTerm),
+                user.phone?.includes(searchTerm),
             )
-          : mockUsers
+          : users
 
         setUsersData(filteredUsers)
-        setTotalPages(Math.ceil(filteredUsers.length / 10))
+        setTotalPages(Math.ceil(total / 10))
+        setStats(prevStats => ({
+          ...prevStats,
+          totalUsers: total
+        }))
 
-        // Mock activity logs
-        const mockLogs = [
-          {
-            id: "l1",
-            userId: "u1",
-            userName: "Jean Dupont",
-            action: "PROFILE_UPDATE",
-            details: "Email changé de jean.old@example.com à jean@example.com",
-            timestamp: new Date(2023, 2, 20, 14, 35).toISOString(),
-          },
-          {
-            id: "l2",
-            userId: "u2",
-            userName: "Marie Martin",
-            action: "PHONE_UPDATE",
-            details: "Téléphone changé de +33687654320 à +33687654321",
-            timestamp: new Date(2023, 1, 5, 10, 22).toISOString(),
-          },
-          {
-            id: "l3",
-            userId: "u3",
-            userName: "Lucas Bernard",
-            action: "PASSWORD_CHANGE",
-            details: "Mot de passe modifié",
-            timestamp: new Date(2023, 3, 15, 16, 45).toISOString(),
-          },
-          {
-            id: "l4",
-            userId: "u1",
-            userName: "Jean Dupont",
-            action: "LOGIN",
-            details: "Connexion depuis une nouvelle adresse IP",
-            timestamp: new Date(2023, 3, 18, 9, 15).toISOString(),
-          },
-          {
-            id: "l5",
-            userId: "u4",
-            userName: "Sophie Petit",
-            action: "REGISTRATION",
-            details: "Nouvel utilisateur inscrit",
-            timestamp: new Date(2023, 2, 25, 11, 5).toISOString(),
-          },
-        ]
-
-        setActivityLogs(mockLogs)
-
-        // Mock stats
-        setStats({
-          totalUsers: 248,
-          activeSessions: 42,
-          serverLoad: 28,
-          databaseSize: 1.2,
-        })
+        // Fetch activity logs
+        try {
+          const logsResponse = await userApi.getActivityLogs()
+          setActivityLogs(Array.isArray(logsResponse.data) ? logsResponse.data : [])
+        } catch (error) {
+          console.error("Error fetching activity logs:", error)
+          setActivityLogs([])
+        }
 
         setLoading(false)
       } catch (error) {
         console.error("Error fetching admin data:", error)
+        toast.error("Erreur lors du chargement des données")
         setLoading(false)
       }
     }
 
     fetchData()
-  }, [searchTerm])
+  }, [page, searchTerm])
 
-  const handleSearch = (e) => {
+  // Auto-refresh data every 30 seconds
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      handleRefresh()
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(intervalId)
+  }, [page]) // Re-run effect when page changes
+
+  const handleSearch = async (e) => {
     e.preventDefault()
-    // Search is handled by the useEffect above
+    try {
+      setLoading(true)
+      const response = await userApi.searchUsers(searchTerm)
+      setUsersData(response.data)
+      setTotalPages(Math.ceil(response.data.length / 10))
+      setStats(prevStats => ({
+        ...prevStats,
+        totalUsers: response.data.length
+      }))
+      toast.success("Recherche effectuée avec succès")
+    } catch (error) {
+      console.error("Error searching users:", error)
+      toast.error("Erreur lors de la recherche des utilisateurs")
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handlePrevPage = () => {
     if (page > 1) {
       setPage(page - 1)
+      toast.success("Page précédente")
     }
   }
 
   const handleNextPage = () => {
     if (page < totalPages) {
       setPage(page + 1)
+      toast.success("Page suivante")
+    }
+  }
+
+  const handleRefresh = async () => {
+    try {
+      setLoading(true)
+      const response = await userApi.getAllUsers(page, 10)
+      const { users, total } = response.data
+      
+      setUsersData(users)
+      setTotalPages(Math.ceil(total / 10))
+      setStats(prevStats => ({
+        ...prevStats,
+        totalUsers: total
+      }))
+
+      const logsResponse = await userApi.getActivityLogs()
+      setActivityLogs(logsResponse.data)
+
+      toast.success("Données mises à jour avec succès")
+    } catch (error) {
+      console.error("Error refreshing data:", error)
+      toast.error("Erreur lors de la mise à jour des données")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleEditUser = (userData) => {
+    setSelectedUser(userData)
+    setEditForm({
+      name: userData.name,
+      email: userData.email,
+      phone: userData.phone || "",
+      role: userData.role
+    })
+    setShowEditModal(true)
+    toast.success("Modification de l'utilisateur")
+  }
+
+  const handleDeleteUser = (userData) => {
+    setSelectedUser(userData)
+    setShowDeleteModal(true)
+    toast.success("Suppression de l'utilisateur")
+  }
+
+  const handleUpdateUser = async (e) => {
+    e.preventDefault()
+    try {
+      const response = await userApi.updateUser(selectedUser._id || selectedUser.id, editForm)
+      setUsersData(usersData.map(user => 
+        (user._id === selectedUser._id || user.id === selectedUser.id) ? response.data : user
+      ))
+      toast.success("Utilisateur mis à jour avec succès")
+      setShowEditModal(false)
+    } catch (error) {
+      console.error("Error updating user:", error)
+      toast.error(error.response?.data?.message || "Erreur lors de la mise à jour de l'utilisateur")
+    }
+  }
+
+  const handleConfirmDelete = async () => {
+    try {
+      await userApi.deleteUser(selectedUser._id || selectedUser.id)
+      setUsersData(usersData.filter(user => 
+        user._id !== selectedUser._id && user.id !== selectedUser.id
+      ))
+      toast.success("Utilisateur supprimé avec succès")
+      setShowDeleteModal(false)
+    } catch (error) {
+      console.error("Error deleting user:", error)
+      toast.error(error.response?.data?.message || "Erreur lors de la suppression de l'utilisateur")
     }
   }
 
@@ -216,6 +227,17 @@ const AdminDashboard = () => {
         </div>
         <h1 className="text-3xl font-bold mb-2">Tableau de bord administrateur</h1>
         <p className="text-gray-600">Administration et gestion du système</p>
+      </div>
+
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={handleRefresh}
+          className="btn btn-outline flex items-center"
+          disabled={loading}
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Rafraîchir
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -366,21 +388,25 @@ const AdminDashboard = () => {
               <input
                 type="text"
                 className="form-input pr-10 py-1.5 text-sm"
-                placeholder="Rechercher..."
+                placeholder="Rechercher par nom, email ou téléphone..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
               <button
                 type="submit"
                 className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-gray-700"
+                disabled={loading}
               >
-                <Search className="h-4 w-4" />
+                <Search className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </form>
             <button
               className="text-gray-500 hover:text-gray-700 p-1.5"
-              onClick={() => setSearchTerm("")}
-              title="Rafraîchir"
+              onClick={() => {
+                setSearchTerm("")
+                handleRefresh()
+              }}
+              title="Réinitialiser la recherche"
             >
               <RefreshCw className="h-5 w-5" />
             </button>
@@ -427,8 +453,8 @@ const AdminDashboard = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {usersData.map((userData) => (
-                <tr key={userData.id} className="hover:bg-gray-50">
+              {usersData.map((userData, index) => (
+                <tr key={`${userData._id || userData.id || index}-${userData.email}`} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-10 w-10 bg-gray-100 rounded-full flex items-center justify-center">
@@ -436,7 +462,7 @@ const AdminDashboard = () => {
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{userData.name}</div>
-                        <div className="text-sm text-gray-500">ID: {userData.id}</div>
+                        <div className="text-sm text-gray-500">ID: {userData._id || userData.id}</div>
                       </div>
                     </div>
                   </td>
@@ -478,8 +504,18 @@ const AdminDashboard = () => {
                     {new Date(userData.createdAt).toLocaleDateString("fr-FR")}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button className="text-secondary-600 hover:text-secondary-900 mr-3">Modifier</button>
-                    <button className="text-red-600 hover:text-red-900">Supprimer</button>
+                    <button 
+                      onClick={() => handleEditUser(userData)}
+                      className="text-secondary-600 hover:text-secondary-900 mr-3"
+                    >
+                      Modifier
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteUser(userData)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      Supprimer
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -521,7 +557,7 @@ const AdminDashboard = () => {
           </h2>
         </div>
         <div className="card-body">
-          {activityLogs.length === 0 ? (
+          {!Array.isArray(activityLogs) || activityLogs.length === 0 ? (
             <p className="text-gray-500">Aucune activité récente.</p>
           ) : (
             <ul className="divide-y divide-gray-100">
@@ -540,6 +576,117 @@ const AdminDashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Edit User Modal */}
+      {showEditModal && selectedUser && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Modifier l'utilisateur</h3>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUpdateUser}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Nom</label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-secondary-500 focus:ring-secondary-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-secondary-500 focus:ring-secondary-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Téléphone</label>
+                  <input
+                    type="tel"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-secondary-500 focus:ring-secondary-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Rôle</label>
+                  <select
+                    value={editForm.role}
+                    onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-secondary-500 focus:ring-secondary-500"
+                    required
+                  >
+                    <option value="user">Utilisateur</option>
+                    <option value="admin">Administrateur</option>
+                  </select>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="btn btn-outline"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Modal */}
+      {showDeleteModal && selectedUser && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Supprimer l'utilisateur</h3>
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Êtes-vous sûr de vouloir supprimer l'utilisateur {selectedUser.name} ? Cette action est irréversible.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="btn btn-outline"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="btn btn-danger"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext"
 import { Lock, ArrowLeft, Check, Eye, EyeOff } from "lucide-react"
 import { useState } from "react"
 import { resetPasswordSchema } from "../utils/validation"
+import toast from "react-hot-toast"
 
 const ResetPassword = () => {
   const { resetPassword } = useAuth()
@@ -27,6 +28,7 @@ const ResetPassword = () => {
         const success = await resetPassword(token, values.password)
         if (success) {
           setResetSuccess(true)
+          toast.success("Mot de passe réinitialisé avec succès")
           // Redirect to login after a delay
           setTimeout(() => {
             navigate("/login")
@@ -34,6 +36,7 @@ const ResetPassword = () => {
         }
       } catch (error) {
         console.error("Reset password error:", error)
+        toast.error(error.response?.data?.message || "Erreur lors de la réinitialisation du mot de passe")
       }
     },
   })

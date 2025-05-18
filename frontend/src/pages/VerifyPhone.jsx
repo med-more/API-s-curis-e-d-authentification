@@ -6,9 +6,10 @@ import { useAuth } from "../context/AuthContext"
 import { Phone, ArrowLeft, Check, RefreshCw } from "lucide-react"
 import { useState, useEffect } from "react"
 import { phoneVerificationSchema } from "../utils/validation"
+import toast from "react-hot-toast"
 
 const VerifyPhone = () => {
-  const { user, verifyPhone } = useAuth()
+  const { user, verifyPhone, resendVerificationCode } = useAuth()
   const navigate = useNavigate()
   const [verificationSuccess, setVerificationSuccess] = useState(false)
   const [resendDisabled, setResendDisabled] = useState(false)
@@ -45,6 +46,7 @@ const VerifyPhone = () => {
         const success = await verifyPhone(values.code, user?.phone)
         if (success) {
           setVerificationSuccess(true)
+          toast.success("Numéro de téléphone vérifié avec succès")
           // Redirect to profile after a delay
           setTimeout(() => {
             navigate("/profile")
@@ -52,18 +54,23 @@ const VerifyPhone = () => {
         }
       } catch (error) {
         console.error("Verification error:", error)
+        toast.error(error.response?.data?.message || "Erreur lors de la vérification du numéro de téléphone")
       }
     },
   })
 
   // Handle resend verification code
-  const handleResend = async () => {
+  const handleResendCode = async () => {
     try {
-      // In a real app, this would call an API to resend the code
-      setResendDisabled(true)
-      setCountdown(60) // 60 seconds cooldown
+      const success = await resendVerificationCode(user?.phone)
+      if (success) {
+        toast.success("Code de vérification envoyé avec succès")
+        setResendDisabled(true)
+        setCountdown(60) // 60 seconds cooldown
+      }
     } catch (error) {
-      console.error("Resend verification error:", error)
+      console.error("Resend code error:", error)
+      toast.error(error.response?.data?.message || "Erreur lors de l'envoi du code de vérification")
     }
   }
 
@@ -150,7 +157,7 @@ const VerifyPhone = () => {
         <button
           type="button"
           className="w-full btn btn-outline flex items-center justify-center"
-          onClick={handleResend}
+          onClick={handleResendCode}
           disabled={resendDisabled}
         >
           <RefreshCw className={`h-5 w-5 mr-2 ${resendDisabled ? "animate-spin" : ""}`} />

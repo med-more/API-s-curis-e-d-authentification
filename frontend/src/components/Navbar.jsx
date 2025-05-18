@@ -1,5 +1,3 @@
-"use client"
-
 import { Link, useLocation } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { LogOut, User, Shield, Home, Menu, X, Settings, HelpCircle } from "lucide-react"

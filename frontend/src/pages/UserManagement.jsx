@@ -1,5 +1,3 @@
-"use client"
-
 import { useState, useEffect } from "react"
 import { useAuth } from "../context/AuthContext"
 import {
@@ -17,6 +15,8 @@ import {
   Clock,
   User,
 } from "lucide-react"
+import { toast } from "react-hot-toast"
+import { userApi } from "../services/api"
 
 const UserManagement = () => {
   const { user } = useAuth()
@@ -31,6 +31,13 @@ const UserManagement = () => {
   const [showUserModal, setShowUserModal] = useState(false)
   const [userHistory, setUserHistory] = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    role: ""
+  })
 
   // Fetch users on component mount and when page or search changes
   useEffect(() => {
@@ -174,11 +181,11 @@ const UserManagement = () => {
       setSelectedUser(null)
 
       // Show success message
-      // toast.success("User deleted successfully")
+      toast.success("User deleted successfully")
     } catch (error) {
       console.error("Error deleting user:", error)
       // Show error message
-      // toast.error("Failed to delete user")
+      toast.error("Failed to delete user")
     }
   }
 
@@ -242,6 +249,37 @@ const UserManagement = () => {
           description: "Activité utilisateur",
           color: "gray",
         }
+    }
+  }
+
+  const handleEditUser = (user) => {
+    setSelectedUser(user)
+    setEditForm({
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role
+    })
+    setIsEditing(true)
+    setShowUserModal(true)
+  }
+
+  const handleUpdateUser = async (e) => {
+    e.preventDefault()
+    try {
+      const response = await userApi.updateUser(selectedUser.id, editForm)
+      toast.success("Utilisateur mis à jour avec succès")
+      
+      // Mettre à jour la liste des utilisateurs
+      const updatedUsers = users.map(u => 
+        u.id === selectedUser.id ? response.data.user : u
+      )
+      setUsers(updatedUsers)
+      
+      setIsEditing(false)
+      setShowUserModal(false)
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Erreur lors de la mise à jour de l'utilisateur")
     }
   }
 
@@ -489,14 +527,17 @@ const UserManagement = () => {
 
       {/* User Details Modal */}
       {showUserModal && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
             <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-              <h3 className="text-xl font-semibold">Détails de l'utilisateur</h3>
+              <h3 className="text-xl font-semibold">
+                {isEditing ? "Modifier l'utilisateur" : "Détails de l'utilisateur"}
+              </h3>
               <button
                 onClick={() => {
                   setShowUserModal(false)
                   setSelectedUser(null)
+                  setIsEditing(false)
                 }}
                 className="text-gray-400 hover:text-gray-500"
               >
@@ -504,62 +545,141 @@ const UserManagement = () => {
               </button>
             </div>
             <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-              <div className="flex flex-col md:flex-row md:items-start gap-6">
-                <div className="flex-shrink-0 flex flex-col items-center">
-                  <div className="h-24 w-24 bg-gray-100 rounded-full flex items-center justify-center">
-                    <User className="h-12 w-12 text-gray-500" />
-                  </div>
-                  <span
-                    className={`mt-2 px-3 py-1 text-xs font-semibold rounded-full ${
-                      selectedUser.role === "admin" ? "bg-purple-100 text-purple-800" : "bg-green-100 text-green-800"
-                    }`}
-                  >
-                    {selectedUser.role}
-                  </span>
-                </div>
-                <div className="flex-1">
-                  <h4 className="text-lg font-semibold">{selectedUser.name}</h4>
-                  <p className="text-gray-600">{selectedUser.email}</p>
-                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <h5 className="text-sm font-medium text-gray-500 mb-1">ID</h5>
-                      <p className="text-gray-900">{selectedUser.id}</p>
+              {isEditing ? (
+                <form onSubmit={handleUpdateUser} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Nom</label>
+                      <input
+                        type="text"
+                        value={editForm.name}
+                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                        required
+                      />
                     </div>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <h5 className="text-sm font-medium text-gray-500 mb-1">Date d'inscription</h5>
-                      <p className="text-gray-900">{formatDate(selectedUser.createdAt)}</p>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Email</label>
+                      <input
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                        required
+                      />
                     </div>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <h5 className="text-sm font-medium text-gray-500 mb-1">Email vérifié</h5>
-                      <p className="flex items-center">
-                        {selectedUser.emailVerified ? (
-                          <span className="flex items-center text-green-600">
-                            <Check className="h-4 w-4 mr-1" /> Oui
-                          </span>
-                        ) : (
-                          <span className="flex items-center text-red-600">
-                            <X className="h-4 w-4 mr-1" /> Non
-                          </span>
-                        )}
-                      </p>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Téléphone</label>
+                      <input
+                        type="tel"
+                        value={editForm.phone}
+                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                        required
+                      />
                     </div>
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <h5 className="text-sm font-medium text-gray-500 mb-1">Téléphone vérifié</h5>
-                      <p className="flex items-center">
-                        {selectedUser.phoneVerified ? (
-                          <span className="flex items-center text-green-600">
-                            <Check className="h-4 w-4 mr-1" /> Oui
-                          </span>
-                        ) : (
-                          <span className="flex items-center text-red-600">
-                            <X className="h-4 w-4 mr-1" /> Non
-                          </span>
-                        )}
-                      </p>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Rôle</label>
+                      <select
+                        value={editForm.role}
+                        onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500"
+                      >
+                        <option value="user">Utilisateur</option>
+                        <option value="admin">Administrateur</option>
+                      </select>
                     </div>
                   </div>
+                  <div className="flex justify-end space-x-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditing(false)
+                        setEditForm({
+                          name: selectedUser.name,
+                          email: selectedUser.email,
+                          phone: selectedUser.phone,
+                          role: selectedUser.role
+                        })
+                      }}
+                      className="btn btn-outline"
+                    >
+                      Annuler
+                    </button>
+                    <button type="submit" className="btn btn-primary">
+                      Enregistrer
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="flex flex-col md:flex-row md:items-start gap-6">
+                  <div className="flex-shrink-0 flex flex-col items-center">
+                    <div className="h-24 w-24 bg-gray-100 rounded-full flex items-center justify-center">
+                      <User className="h-12 w-12 text-gray-500" />
+                    </div>
+                    <span
+                      className={`mt-2 px-3 py-1 text-xs font-semibold rounded-full ${
+                        selectedUser.role === "admin" ? "bg-purple-100 text-purple-800" : "bg-green-100 text-green-800"
+                      }`}
+                    >
+                      {selectedUser.role}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h4 className="text-lg font-semibold">{selectedUser.name}</h4>
+                        <p className="text-gray-600">{selectedUser.email}</p>
+                      </div>
+                      <button
+                        onClick={() => handleEditUser(selectedUser)}
+                        className="btn btn-outline flex items-center"
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Modifier
+                      </button>
+                    </div>
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <h5 className="text-sm font-medium text-gray-500 mb-1">ID</h5>
+                        <p className="text-gray-900">{selectedUser.id}</p>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <h5 className="text-sm font-medium text-gray-500 mb-1">Date d'inscription</h5>
+                        <p className="text-gray-900">{formatDate(selectedUser.createdAt)}</p>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <h5 className="text-sm font-medium text-gray-500 mb-1">Email vérifié</h5>
+                        <p className="flex items-center">
+                          {selectedUser.emailVerified ? (
+                            <span className="flex items-center text-green-600">
+                              <Check className="h-4 w-4 mr-1" /> Oui
+                            </span>
+                          ) : (
+                            <span className="flex items-center text-red-600">
+                              <X className="h-4 w-4 mr-1" /> Non
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <h5 className="text-sm font-medium text-gray-500 mb-1">Téléphone vérifié</h5>
+                        <p className="flex items-center">
+                          {selectedUser.phoneVerified ? (
+                            <span className="flex items-center text-green-600">
+                              <Check className="h-4 w-4 mr-1" /> Oui
+                            </span>
+                          ) : (
+                            <span className="flex items-center text-red-600">
+                              <X className="h-4 w-4 mr-1" /> Non
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* User History */}
               <div className="mt-8">
@@ -598,27 +718,6 @@ const UserManagement = () => {
                   </div>
                 )}
               </div>
-            </div>
-            <div className="p-6 border-t border-gray-200 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowUserModal(false)
-                  setSelectedUser(null)
-                }}
-                className="btn btn-outline"
-              >
-                Fermer
-              </button>
-              <button
-                onClick={() => {
-                  setShowUserModal(false)
-                  handleDeleteUser(selectedUser)
-                }}
-                className="btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Supprimer
-              </button>
             </div>
           </div>
         </div>

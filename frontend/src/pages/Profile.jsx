@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext"
 import { User, Mail, Phone, Lock, Save, Check, AlertTriangle, Eye, EyeOff } from "lucide-react"
 import { useState } from "react"
 import { profileUpdateSchema } from "../utils/validation"
+import toast from "react-hot-toast"
 
 const Profile = () => {
   const { user, updateProfile } = useAuth()
@@ -46,9 +47,11 @@ const Profile = () => {
           formik.setFieldValue("newPassword", "")
           formik.setFieldValue("confirmNewPassword", "")
           setIsEditing(false)
+          toast.success("Profil mis à jour avec succès")
         }
       } catch (error) {
         console.error("Profile update error:", error)
+        toast.error(error.response?.data?.message || "Erreur lors de la mise à jour du profil")
       }
     },
   })

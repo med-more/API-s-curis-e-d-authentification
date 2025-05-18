@@ -1,6 +1,20 @@
 const User = require('../models/User');
 const ActivityLog = require('../models/ActivityLog');
 
+const logActivity = async (userId, action, details, req) => {
+  try {
+    await ActivityLog.create({
+      userId,
+      action,
+      details,
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent']
+    });
+  } catch (error) {
+    console.error("Error logging activity:", error);
+  }
+};
+
 exports.getAllUsers = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -88,6 +102,83 @@ exports.getActivityLogs = async (req, res, next) => {
       currentPage: page,
       totalLogs: total
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.updateUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name, email, phone, role } = req.body;
+    
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+    
+    // Vérifier si l'email est déjà utilisé par un autre utilisateur
+    if (email !== user.email) {
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res.status(400).json({ message: 'Cet email est déjà utilisé' });
+      }
+      user.email = email;
+      user.emailVerified = false;
+    }
+    
+    // Vérifier si le numéro de téléphone est déjà utilisé par un autre utilisateur
+    if (phone !== user.phone) {
+      const existingUser = await User.findOne({ phone });
+      if (existingUser) {
+        return res.status(400).json({ message: 'Ce numéro de téléphone est déjà utilisé' });
+      }
+      user.phone = phone;
+      user.phoneVerified = false;
+    }
+    
+    user.name = name;
+    if (role) {
+      user.role = role;
+    }
+    
+    await user.save();
+    
+    await logActivity(user._id, 'PROFILE_UPDATE', 'Profil mis à jour par l\'administrateur', req);
+    
+    res.json({
+      message: 'Utilisateur mis à jour avec succès',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        emailVerified: user.emailVerified,
+        phoneVerified: user.phoneVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.deleteUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    }
+    
+    await user.deleteOne();
+    
+    await logActivity(req.userId, 'USER_DELETE', `Utilisateur ${user.name} supprimé`, req);
+    
+    res.json({ message: 'Utilisateur supprimé avec succès' });
   } catch (err) {
     next(err);
   }

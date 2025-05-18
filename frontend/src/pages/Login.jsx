@@ -29,10 +29,14 @@ const Login = () => {
     },
     validationSchema: loginSchema,
     onSubmit: async (values) => {
-      const success = await login(values)
-      if (success) {
-        // If login was successful, redirect to the original destination
-        navigate(from, { replace: true })
+      try {
+        const success = await login(values)
+        if (success) {
+          // If login was successful, redirect to the original destination
+          navigate(from, { replace: true })
+        }
+      } catch (error) {
+        console.error("Login error:", error)
       }
     },
   })

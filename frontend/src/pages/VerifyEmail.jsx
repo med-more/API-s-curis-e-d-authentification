@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext"
 import { Mail, ArrowLeft, Check, RefreshCw } from "lucide-react"
 import { useState, useEffect } from "react"
 import { emailVerificationSchema } from "../utils/validation"
+import toast from "react-hot-toast"
 
 const VerifyEmail = () => {
   const { verifyEmail, resendVerification } = useAuth()
@@ -27,16 +28,19 @@ const VerifyEmail = () => {
           const success = await verifyEmail(token)
           if (success) {
             setVerificationSuccess(true)
+            toast.success("Email vérifié avec succès")
             // Redirect to login after a delay
             setTimeout(() => {
               navigate("/login")
             }, 3000)
           } else {
             setVerifying(false)
+            toast.error("Échec de la vérification de l'email")
           }
         } catch (error) {
           console.error("Verification error:", error)
           setVerifying(false)
+          toast.error(error.response?.data?.message || "Erreur lors de la vérification de l'email")
         }
       }
     }
@@ -80,17 +84,19 @@ const VerifyEmail = () => {
   })
 
   // Handle resend verification email
-  const handleResend = async () => {
+  const handleResendVerification = async () => {
     if (!pendingEmail || resendDisabled) return
 
     try {
       const success = await resendVerification(pendingEmail)
       if (success) {
+        toast.success("Email de vérification envoyé avec succès")
         setResendDisabled(true)
         setCountdown(60) // 60 seconds cooldown
       }
     } catch (error) {
       console.error("Resend verification error:", error)
+      toast.error(error.response?.data?.message || "Erreur lors de l'envoi de l'email de vérification")
     }
   }
 
@@ -188,7 +194,7 @@ const VerifyEmail = () => {
           <button
             type="button"
             className="w-full btn btn-outline flex items-center justify-center"
-            onClick={handleResend}
+            onClick={handleResendVerification}
             disabled={resendDisabled}
           >
             <RefreshCw className={`h-5 w-5 mr-2 ${resendDisabled ? "animate-spin" : ""}`} />

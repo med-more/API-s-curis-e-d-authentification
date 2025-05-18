@@ -228,26 +228,21 @@ export const AuthProvider = ({ children }) => {
   }
 
   // Update profile function
-const updateProfile = async (updateData) => {
-  try {
-    const token = localStorage.getItem('token');
-    const response = await axios.put(
-      '/api/auth/profile', // Updated endpoint
-      updateData,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      }
-    );
-    
-    // Handle successful update
-    return true;
-  } catch (error) {
-    console.error('Profile update error:', error);
-    throw error;
-  }
-};
+  const updateProfile = async (updateData) => {
+    try {
+      const response = await authApi.updateProfile(updateData);
+      
+      // Update user data in context
+      await fetchUserData();
+      
+      toast.success("Profil mis à jour avec succès");
+      return true;
+    } catch (error) {
+      console.error('Profile update error:', error);
+      toast.error(error.response?.data?.message || "Erreur lors de la mise à jour du profil");
+      throw error;
+    }
+  };
 
   // Provide all auth functions and state
   const value = {

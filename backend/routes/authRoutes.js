@@ -1,69 +1,28 @@
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/authController');
-const authValidators = require('../validators/authValidator');
+const authCtrl = require('../controllers/authController');
+const { registerValidator, loginValidator } = require('../validators/authValidator');
 const authBasic = require('../middlewares/authBasic');
 const authSession = require('../middlewares/authSession');
 const authJWT = require('../middlewares/authJWT');
 
-// Authentication Routes
-router.post('/register', 
-  authValidators.registerValidator, 
-  authController.register
-);
+// Routes d'authentification
+router.post('/register', registerValidator, authCtrl.register);
+router.post('/login', loginValidator, authCtrl.login);
+router.get('/logout', authCtrl.logout);
 
-router.post('/login', 
-  authValidators.loginValidator, 
-  authController.login
-);
+// Routes de vérification
+router.get('/verify-email/:token', authCtrl.verifyEmail);
+router.post('/resend-verification', authCtrl.resendVerification);
+router.post('/verify-phone', authJWT, authCtrl.verifyPhone);
 
-router.get('/logout', 
-  authController.logout
-);
+router.post('/forgot-password', authCtrl.forgotPassword);
+router.post('/reset-password/:token', authCtrl.resetPassword);
 
-// Verification Routes
-router.get('/verify-email/:token', 
-  authController.verifyEmail
-);
+router.put('/profile', authJWT, authCtrl.updateProfile); 
 
-router.post('/resend-verification', 
-  authController.resendVerification
-);
-
-router.post('/verify-phone', 
-  authJWT, 
-  authController.verifyPhone
-);
-
-// Password Routes
-router.post('/forgot-password', 
-  authController.forgotPassword
-);
-
-router.post('/reset-password/:token', 
-  authController.resetPassword
-);
-
-// Profile Route
-router.put('/profile', 
-  authJWT, 
-  authController.updateProfile
-);
-
-// User Info Routes
-router.get('/me/basic', 
-  authBasic, 
-  authController.getMe
-);
-
-router.get('/me/jwt', 
-  authJWT, 
-  authController.getMe
-);
-
-router.get('/me/session', 
-  authSession, 
-  authController.getMe
-);
+router.get('/me/basic', authBasic, authCtrl.getMe);
+router.get('/me/jwt', authJWT, authCtrl.getMe);
+router.get('/me/session', authSession, authCtrl.getMe);
 
 module.exports = router;
